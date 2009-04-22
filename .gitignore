@@ -1,0 +1,31 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# Normal rules
+#
+.*
+*.*~
+*.py~
+*.pyc
+*.txt
+trash
+report
+*.png
+*.svg
+*.dot
+*.jpg
+*.png
+*.o
+*.so
+*.eps
+*~
+*.exe
+*.avi
+*_adolc* 
+_adolc-vs_tape1
+
+
+# exceptions
+!.gitignore
