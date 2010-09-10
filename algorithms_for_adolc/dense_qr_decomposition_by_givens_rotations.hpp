@@ -3,58 +3,61 @@
 
 #include <iostream>
 #include <cstdlib>
-#include <vector>
-#include <boost/numeric/mtl/mtl.hpp>
-#include <boost/numeric/linear_algebra/inverse.hpp>
+
+/** \brief memory mapping (n,m) for row major matrices */
+inline int id(int m, int n, int ldim){
+	return n*ldim+m;
+}
 
 /** \brief Computes the Q^T R decomposition
 Warning: this algorithm returns Q^T and not Q.
 */
+inline int myindex(int n, int m, int na){
+	return n*na+m;
+}
+
 template <class Tdouble>
-int qr(const mtl::dense2D<Tdouble> &in_A, mtl::dense2D<Tdouble> &QT, mtl::dense2D<Tdouble> &R){
-	/* check inputs */
-	const int N = in_A.num_rows();
-	const int M = in_A.num_cols();
-	
-	if(N != M){
-		return -1;
-	}
-	
-	/* prepare Q and R */
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			QT[n][m] = n==m;
+void qr(Tdouble *a, Tdouble *qt, Tdouble *r, int na){
+    Tdouble at,bt,rt,ct,st, rnk, qtnk;
+	int n,m, k, tmp; 
+
+	/* prepare Q and r */
+	for(n = 0; n!=na; ++n){
+		for(m = 0; m!=na; ++m){
+			if(n==m) tmp = 1;
+			else     tmp = 0;
+			*(qt + myindex(n,m,na)) = tmp;
 		}
 	}
 	
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			R[n][m] = in_A[n][m];
+	for(n = 0; n!=na; ++n){
+		for(m = 0; m!=na; ++m){
+			*(r + myindex(n,m,na)) = *(a + myindex(n,m,na));
 		}
 	}
 
 	/* MAIN ALGORITHM */
-	for(int n = 0; n!=N; ++n){
-		for(int m = n+1; m!=N; ++m){
+	for(n = 0; n!=na; ++n){
+		for(m = n+1; m!=na; ++m){
 			/* defining coefficients of the Givens rotation */
-			const Tdouble a = R[n][n];
-			const Tdouble b = R[m][n];
-			const Tdouble r = sqrt(a*a + b*b);
-			const Tdouble c = a/r;
-			const Tdouble s = b/r;
+			at = *(r + myindex(n,n,na));
+			bt = *(r + myindex(m,n,na));
+			rt = sqrt(at*at + bt*bt);
+			ct = at/rt;
+			st = bt/rt;
 			
-			for(int k = 0; k!=N; ++k){
-				/* update R */
-				const Tdouble Rnk = R[n][k];
-				R[n][k] = c*Rnk + s*R[m][k];
-				R[m][k] =-s*Rnk + c*R[m][k];
+			for(k = 0; k!=na; ++k){
+				/* update r */
+				rnk = *(r + myindex(n,k,na));
+				*(r + myindex(n,k,na)) = ct*rnk   + st* (*(r + myindex(m,k,na)));
+				*(r + myindex(m,k,na)) =-st*rnk   + ct* (*(r + myindex(m,k,na)));
 				/* update Q */
-				const Tdouble QTnk = QT[n][k];
-				QT[n][k] = c*QTnk + s*QT[m][k];
-				QT[m][k] =-s*QTnk + c*QT[m][k];
+				qtnk = *(qt + myindex(n,k,na));
+				*(qt + myindex(n,k,na)) = ct*qtnk + st*(*(qt + myindex(m,k,na)));
+				*(qt + myindex(m,k,na)) =-st*qtnk + ct*(*(qt + myindex(m,k,na)));
 			}
 		}
 	}
-	return 0;
-} 
+}
+
 #endif

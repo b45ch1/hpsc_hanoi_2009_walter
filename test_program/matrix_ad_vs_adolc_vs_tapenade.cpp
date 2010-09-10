@@ -32,8 +32,8 @@ return (int)(tv.tv_sec*1000 + (tv.tv_usec / 1000));
 extern "C" void inv_(double *A, double *QT, double *R, int *NA);
 extern "C" void inv_b__(double *A, double *Ab, double *QT, double *QTb, double *R, int *NA);
 
-extern "C" void dgetrf_( long *M, long *N, double * A, long * LDA, long * IPIV,
-	long *INFO );
+extern "C" void dgetrf_( int *M, int *N, double * A, int * LDA, int * IPIV,
+	int *INFO );
 /**<
 *SUBROUTINE DGETRF( M, N, A, LDA, IPIV, INFO )
 *
@@ -259,34 +259,147 @@ extern "C" void dgemm_(char *TRANSA, char *TRANSB, int *M, int *N, int *K,
 *           Unchanged on exit.
 */
 
-// void cblas_dgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA,
-				// const enum CBLAS_TRANSPOSE TransB, const long M, const long N,
-				// const long K, const double alpha, const double *A,
-				// const long lda, const double *B, const long ldb,
-				// const double beta, double *C, const long ldc);
 
-				// enum CBLAS_TRANSPOSE {CblasNoTrans=111, CblasTrans=112, CblasConjTrans=113,
-						// AtlasConj=114};
-
+extern "C" void dgels_(char *TRANS,  int *M, int *N, int *NRHS,
+	double *A, int *LDA, double *B, int *LDB, double *WORK, int *LWORK, int *INFO);
+/**<
+      SUBROUTINE DGELS( TRANS, M, N, NRHS, A, LDA, B, LDB, WORK, LWORK,
+     $                  INFO )
+*
+*  -- LAPACK driver routine (version 3.2) --
+*  -- LAPACK is a software package provided by Univ. of Tennessee,    --
+*  -- Univ. of California Berkeley, Univ. of Colorado Denver and NAG Ltd..--
+*     November 2006
+*
+*     .. Scalar Arguments ..
+      CHARACTER          TRANS
+      INTEGER            INFO, LDA, LDB, LWORK, M, N, NRHS
+*     ..
+*     .. Array Arguments ..
+      DOUBLE PRECISION   A( LDA, * ), B( LDB, * ), WORK( * )
+*     ..
+*
+*  Purpose
+*  =======
+*
+*  DGELS solves overdetermined or underdetermined real linear systems
+*  involving an M-by-N matrix A, or its transpose, using a QR or LQ
+*  factorization of A.  It is assumed that A has full rank.
+*
+*  The following options are provided:
+*
+*  1. If TRANS = 'N' and m >= n:  find the least squares solution of
+*     an overdetermined system, i.e., solve the least squares problem
+*                  minimize || B - A*X ||.
+*
+*  2. If TRANS = 'N' and m < n:  find the minimum norm solution of
+*     an underdetermined system A * X = B.
+*
+*  3. If TRANS = 'T' and m >= n:  find the minimum norm solution of
+*     an undetermined system A**T * X = B.
+*
+*  4. If TRANS = 'T' and m < n:  find the least squares solution of
+*     an overdetermined system, i.e., solve the least squares problem
+*                  minimize || B - A**T * X ||.
+*
+*  Several right hand side vectors b and solution vectors x can be
+*  handled in a single call; they are stored as the columns of the
+*  M-by-NRHS right hand side matrix B and the N-by-NRHS solution
+*  matrix X.
+*
+*  Arguments
+*  =========
+*
+*  TRANS   (input) CHARACTER*1
+*          = 'N': the linear system involves A;
+*          = 'T': the linear system involves A**T.
+*
+*  M       (input) INTEGER
+*          The number of rows of the matrix A.  M >= 0.
+*
+*  N       (input) INTEGER
+*          The number of columns of the matrix A.  N >= 0.
+*
+*  NRHS    (input) INTEGER
+*          The number of right hand sides, i.e., the number of
+*          columns of the matrices B and X. NRHS >=0.
+*
+*  A       (input/output) DOUBLE PRECISION array, dimension (LDA,N)
+*          On entry, the M-by-N matrix A.
+*          On exit,
+*            if M >= N, A is overwritten by details of its QR
+*                       factorization as returned by DGEQRF;
+*            if M <  N, A is overwritten by details of its LQ
+*                       factorization as returned by DGELQF.
+*
+*  LDA     (input) INTEGER
+*          The leading dimension of the array A.  LDA >= max(1,M).
+*
+*  B       (input/output) DOUBLE PRECISION array, dimension (LDB,NRHS)
+*          On entry, the matrix B of right hand side vectors, stored
+*          columnwise; B is M-by-NRHS if TRANS = 'N', or N-by-NRHS
+*          if TRANS = 'T'.
+*          On exit, if INFO = 0, B is overwritten by the solution
+*          vectors, stored columnwise:
+*          if TRANS = 'N' and m >= n, rows 1 to n of B contain the least
+*          squares solution vectors; the residual sum of squares for the
+*          solution in each column is given by the sum of squares of
+*          elements N+1 to M in that column;
+*          if TRANS = 'N' and m < n, rows 1 to N of B contain the
+*          minimum norm solution vectors;
+*          if TRANS = 'T' and m >= n, rows 1 to M of B contain the
+*          minimum norm solution vectors;
+*          if TRANS = 'T' and m < n, rows 1 to M of B contain the
+*          least squares solution vectors; the residual sum of squares
+*          for the solution in each column is given by the sum of
+*          squares of elements M+1 to N in that column.
+*
+*  LDB     (input) INTEGER
+*          The leading dimension of the array B. LDB >= MAX(1,M,N).
+*
+*  WORK    (workspace/output) DOUBLE PRECISION array, dimension (MAX(1,LWORK))
+*          On exit, if INFO = 0, WORK(1) returns the optimal LWORK.
+*
+*  LWORK   (input) INTEGER
+*          The dimension of the array WORK.
+*          LWORK >= max( 1, MN + max( MN, NRHS ) ).
+*          For optimal performance,
+*          LWORK >= max( 1, MN + max( MN, NRHS )*NB ).
+*          where MN = min(M,N) and NB is the optimum block size.
+*
+*          If LWORK = -1, then a workspace query is assumed; the routine
+*          only calculates the optimal size of the WORK array, returns
+*          this value as the first entry of the WORK array, and no error
+*          message related to LWORK is issued by XERBLA.
+*
+*  INFO    (output) INTEGER
+*          = 0:  successful exit
+*          < 0:  if INFO = -i, the i-th argument had an illegal value
+*          > 0:  if INFO =  i, the i-th diagonal element of the
+*                triangular factor of A is zero, so that A does not have
+*                full rank; the least squares solution could not be
+*                computed.
+*
+*  =====================================================================
+*/
 
 
 using namespace std;
-using namespace mtl;
 
-/// \brief compute the trace of the inverse of a matrix
-template<class Tdouble>
-Tdouble f(const mtl::dense2D<Tdouble> &A, mtl::dense2D<Tdouble> &Ainv){
-	Tdouble retval(0);
-	inv(A,Ainv);
-	for(int r = 0; r != A.num_rows(); ++r){
-		retval += Ainv[r][r];
-	}
-	return retval;
+/** computes y = trace(A) */
+template <class Tdouble>
+int trace(Tdouble *A, Tdouble *Ainv, Tdouble *R, Tdouble *y, int N){
+    *y = 0;
+    inv(A, Ainv, R, N);
+    for(int n = 0; n < N; ++n){
+        (*y) += A[id(n,n,N)];
+    }
 }
 
+
+
+
 int main(int argc, char* argv[]){
-
-
 	int N = 100;
 	if( argc >= 2){
 		int tmp = atoi(argv[1]);
@@ -316,81 +429,28 @@ int main(int argc, char* argv[]){
 	ofstream runtimes_file;
 	runtimes_file.open("runtimes.txt", fstream::in | fstream::out | fstream::app);
 	runtimes_file<<N<<"\t";
-
-	/*
-	SETUP:
-	======
 	
-		We use the mtl library because of the convenient defined ostream operators, so we can do
-		cout << A <<endl;
-		to output A.
-		
-	*/
-
+	double *A = new double[N*N];
+	double *Ainv = new double[N*N];
+	double *Ainv2 = new double[N*N];
+	double *QT = new double[N*N];
+	double *Q = new double[N*N];
+	double *B = new double[N*N];
+	double *R = new double[N*N];
+	double *Id = new double[N*N];
+	double *dA = new double[N*N];
+	double *WORK = new double[N*N];
 	
-	mtl::dense2D<double> A(N,N);
-	mtl::dense2D<double> Ainv(N,N);
-	mtl::dense2D<double> Ainv2(N,N);
-	mtl::dense2D<double> QT(N,N);
-	mtl::dense2D<double> Q(N,N);
-	mtl::dense2D<double> B(N,N);
-	mtl::dense2D<double> R(N,N);
-	mtl::dense2D<double> Id(N,N);
-	mtl::dense2D<double> dA(N,N);
-
 
 	int start_time,end_time;
 
 	/* fill A with random numbers */
 	for(int n = 0; n!=N; ++n){
 		for(int m = 0; m!=N; ++m){
-			A[n][m] = rand()/100000000000.;
-			Ainv2[n][m] = A[n][m];
+			A[id(n,m,N)] = rand()/100000000000.;
+			Ainv[id(n,m,N)] = A[id(n,m,N)];
 		}
 	}
-
-
-	/* taping inv */
-	mtl::dense2D<adouble> aA(N,N);
-	mtl::dense2D<adouble> aAinv(N,N);
-
-	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-	system(mycmd);
-
-	trace_on(0);
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			aA[n][m]<<= A[n][m];
-		}
-	}
-	inv(aA,aAinv);
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			aAinv[n][m]>>= Ainv[n][m];
-		}
-	}
-	trace_off();
-
-	/* taping  f */
-	start_time = mtime();
-
-	adouble ay;
-	double y;
-	trace_on(1);
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			aA[n][m]<<= A[n][m];
-		}
-	}
-	ay = f(aA,aAinv);
-	ay >>= y;
-	trace_off();
-	end_time = mtime();
-	printf("taping of f needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<"\t";
-	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-	system(mycmd);
-	
 	/*
 	RUNNING TESTS:
 	==============
@@ -416,91 +476,150 @@ int main(int argc, char* argv[]){
 	/* TIMING ATLAS IMPLEMENTATION INVERSE COMPUTATION */
 	/* =============================================== */
 	/* compute the inverse by combination of dgetrf and dgetri */
-	Ainv = A;
 	start_time = mtime();
 	{
-	long ipiv[N];	long info;
-	clapack_dgetrf(CblasRowMajor, N, N,
-				   Ainv.data, N, ipiv);
-	clapack_dgetri(CblasRowMajor, N, Ainv.data, N, ipiv);
+	int *ipiv = new int[N];	int info; int LWORK = N*N;
+	dgetrf_(&N, &N, Ainv, &N, ipiv, &info);
+	// cout<<"info="<<info<<endl;
+	dgetri_(&N, Ainv, &N, ipiv, WORK, &LWORK, &info);
+	// cout<<"info="<<info<<endl;
 	}
 	end_time = mtime();
-	printf("normal ATLAS function evaluation of inv needs %d ms.\n",(end_time-start_time));
+	printf("normal LAPACK function evaluation of inv needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<"\t";
 
 
 	/* check that dot(A,Ainv) = I */
-	cblas_dgemm(CblasRowMajor, CblasNoTrans,
-				 CblasNoTrans, N, N,
-				N, 1., A.data,
-				 N, Ainv.data, N,
-				 0., Id.data, N);
+	double one = 1;
+	double zero = 0;
+	char notrans = 'n';
+	dgemm_(&notrans, &notrans, &N, &N, &N, &one, A,
+				 &N, Ainv, &N,
+				&zero, Id, &N);
 	{
 		double sum = 0;
 		for (int n = 0; n != N; ++n){
 			for (int m = 0; m != N; ++m){
-				sum += Id[n][m];
+				sum += Id[id(n,m,N)];
 			}
 		}
+		cout<<sum<<endl;
 		cout<< "Computation correct? "<< (bool) (abs(sum/N - 1) < N*1e-8 ) <<endl;
 	}
 	
 
 	/* TIMING MY C-IMPLEMENTATION INVERSE COMPUTATION */
 	/* ============================================== */
+
 	start_time = mtime();
-	inv(A,Ainv);
+	inv(A, Ainv, R, N);
 	end_time = mtime();
-	printf("normal function evaluation in C++ of inv needs %d ms.\n",(end_time-start_time));
+	printf("normal selfmade function evaluation in C++ of inv needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<end_time-start_time<<"\t";
+	
+	/* check that dot(A,Ainv) = I */
+	cblas_dgemm(CblasRowMajor, CblasNoTrans,
+				 CblasNoTrans, N, N,
+				N, 1., A,
+				 N, Ainv, N,
+				 0., Id, N);
+	{
+		double sum = 0;
+		for (int n = 0; n != N; ++n){
+			for (int m = 0; m != N; ++m){
+				sum += Id[id(n,m,N)];
+			}
+		}
+		cout<< "Computation correct? "<< (bool) (abs(sum/N - 1) < N*1e-8 ) <<endl;
+	}
+	
+	
+	/* TIMING MY F77-IMPLEMENTATION INVERSE COMPUTATION */
+	/* ================================================ */
+	start_time = mtime();
+	{
+	int Ntmp = N;
+	inv_(A,Ainv,R, &Ntmp);
+	}
+	end_time = mtime();
+	printf("normal selfmade function evaluation in F77 of inv needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<"\t";
 
 	
 	/* check that dot(A,Ainv) = I */
 	cblas_dgemm(CblasRowMajor, CblasNoTrans,
 				 CblasNoTrans, N, N,
-				N, 1., A.data,
-				 N, Ainv.data, N,
-				 0., Id.data, N);
+				N, 1., A,
+				 N, Ainv, N,
+				 0., Id, N);
 	{
 		double sum = 0;
 		for (int n = 0; n != N; ++n){
 			for (int m = 0; m != N; ++m){
-				sum += Id[n][m];
+				sum += Id[id(n,m,N)];
 			}
 		}
 		cout<< "Computation correct? "<< (bool) (abs(sum/N - 1) < N*1e-8 ) <<endl;
 	}
-
-	/* TIMING MY F77-IMPLEMENTATION INVERSE COMPUTATION */
+	
+	
+	/* TIMING MY C-IMPLEMENTATION INVERSE COMPUTATION */
 	/* ================================================ */
 	int Ntmp = N;
 	start_time = mtime();
-	inv_(A.data,Ainv.data,R.data, &Ntmp);
+	inv(A,Ainv,R, N);
 	end_time = mtime();
-	printf("normal function evaluation in F77 of inv needs %d ms.\n",(end_time-start_time));
+	printf("normal selfmade function evaluation in C of inv needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<"\t";
 
 	
 	/* check that dot(A,Ainv) = I */
 	cblas_dgemm(CblasRowMajor, CblasNoTrans,
 				 CblasNoTrans, N, N,
-				N, 1., A.data,
-				 N, Ainv.data, N,
-				 0., Id.data, N);
+				N, 1., A,
+				 N, Ainv, N,
+				 0., Id, N);
 	{
 		double sum = 0;
 		for (int n = 0; n != N; ++n){
 			for (int m = 0; m != N; ++m){
-				sum += Id[n][m];
+				sum += Id[id(n,m,N)];
 			}
 		}
 		cout<< "Computation correct? "<< (bool) (abs(sum/N - 1) < N*1e-8 ) <<endl;
 	}
+
 	
 	/* TIMING TAPED INVERSE COMPUTATION */
 	/* ================================ */
+	
+	/* taping inv */
+	cout<<"start tracing my implementation of inv with ADOL-C"<<endl;
+	adouble *aA = new adouble[N*N];
+	adouble *aR = new adouble[N*N];
+	adouble *aAinv = new adouble[N*N];
+
+	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	system(mycmd);
+	
+	trace_on(0);
+	for(int n = 0; n!=N; ++n){
+		for(int m = 0; m!=N; ++m){
+			aA[id(n,m,N)]<<= A[id(n,m,N)];
+		}
+	}
+	inv(aA, aAinv, aR, N);
+	for(int n = 0; n!=N; ++n){
+		for(int m = 0; m!=N; ++m){
+			aAinv[id(n,m,N)]>>= Ainv[id(n,m,N)];
+		}
+	}
+	trace_off();
+	
+	cout<<"finished tracing"<<endl;	
+	
 	start_time = mtime();
-	function(0,N*N,N*N,A.data, Ainv.data);
+	function(0,N*N,N*N,A, Ainv);
 	end_time = mtime();
 	printf("taped function evaluation of inv needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<"\t";
@@ -509,44 +628,37 @@ int main(int argc, char* argv[]){
 	/* check that dot(A,Ainv) = I */
 	cblas_dgemm(CblasRowMajor, CblasNoTrans,
 				 CblasNoTrans, N, N,
-				N, 1., A.data,
-				 N, Ainv.data, N,
-				 0., Id.data, N);
+				N, 1., A,
+				 N, Ainv, N,
+				 0., Id, N);
 	{
 		double sum = 0;
 		for (int n = 0; n != N; ++n){
 			for (int m = 0; m != N; ++m){
-				sum += Id[n][m];
+				sum += Id[id(n,m,N)];
 			}
 		}
 		cout<< "Computation correct? "<< (bool) (abs(sum/N - 1) < N*1e-8 ) <<endl;
 	}
 	
-	/* TIMING MY C++-IMPLEMENTATION f COMPUTATION */
-	/* ======================================== */
-	start_time = mtime();
-	f(A,Ainv);
-	end_time = mtime();
-	printf("normal function evaluation of f needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<"\t";
-
-
-	/* TIMING TAPED f COMPUTATION */
-	/* ========================== */
-	start_time = mtime();
-	function(1,1,N*N,A.data, &y);
-	end_time = mtime();
-	printf("taped function evaluation of f needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<"\t";
-
-
-// 	/* TIMING TAPED JACOBIAN COMPUTATION OF INV */
-// 	double **J;
-// 	J=myalloc2(N*N,N*N);
+// 	/* TIMING MY C++-IMPLEMENTATION f COMPUTATION */
+// 	/* ======================================== */
 // 	start_time = mtime();
-// 	jacobian(0,N*N,N*N,A.data, J);
+// 	f(A,Ainv);
 // 	end_time = mtime();
-//     printf("taped jacobian of inv needs %d ms.\n",(end_time-start_time));
+// 	printf("normal function evaluation of f needs %d ms.\n",(end_time-start_time));
+// 	runtimes_file<<end_time-start_time<<"\t";
+
+
+// 	/* TIMING TAPED f COMPUTATION */
+// 	/* ========================== */
+// 	start_time = mtime();
+// 	function(1,1,N*N,A.data, &y);
+// 	end_time = mtime();
+// 	printf("taped function evaluation of f needs %d ms.\n",(end_time-start_time));
+// 	runtimes_file<<end_time-start_time<<"\t";
+
+
 
 
 	////////////////////////////////////////////////////
@@ -561,91 +673,126 @@ int main(int argc, char* argv[]){
 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
 	system(mycmd);
 	
-
-	/* ====================================== */
-	/* TIMING TAPED GRADIENT COMPUTATION OF f */
-	/* ====================================== */
-	double *g;
-	g = myalloc(N*N);
-	start_time = mtime();
-	gradient(1,N*N,A.data, g);
-	end_time = mtime();
-	printf("ADOL-C gradient of f needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<"\t";
-	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-	system(mycmd);
-
-	
-	/* ===================================================== */
-	/* COMPUTING THE GRADIENT OF f WITH MATRIX AD via LAPACK */
-	/* ===================================================== */
-	/*              need to compute
-	//              d tr(A^-1) = tr( - (A^-1)^2 dA) and therefore
-	//              \nabla tr(A^-1) = - ((A^-1)^2)^T
-	*/
-	start_time = mtime();
-	/* compute the inverse by combination of dgetrf and dgetri */
-	/* Ainv2 == A here */
-	long ipiv[N];	long info;
-	clapack_dgetrf(CblasRowMajor, N, N,
-				   Ainv2.data, N, ipiv);
-	clapack_dgetri(CblasRowMajor, N, Ainv2.data, N, ipiv);
-
-	 /* compute Abar = - (A^{-1} A^{-1})^T */
-	cblas_dgemm(CblasRowMajor, CblasTrans,
-				 CblasTrans, N, N,
-				N, -1., Ainv2.data,
-				 N, Ainv2.data, N,
-				 0., dA.data, N);
-	end_time = mtime();
-	printf("lapack gradient evaluation of f needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<"\t";
+	/* TIMING TAPED JACOBIAN COMPUTATION OF INV */
+	if(N<=30){
+        double **J;
+        J=myalloc2(N*N,N*N);
+        start_time = mtime();
+        jacobian(0,N*N,N*N,A, J);
+        end_time = mtime();
+        printf("taped jacobian of inv needs %d ms.\n",(end_time-start_time));
+    
+    }
+    
+	/* taping inv */
+	cout<<"start tracing my implementation of trace(inv(.)) with ADOL-C"<<endl;
 
 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
 	system(mycmd);
 	
-
-	/* CHECK THAT TAPED GRADIENT AND LAPACK GRADIENT EVALUATION ARE THE SAME */
-	double difference = 0.;
-	for(int n = 0; n != N; ++n){
-		for(int m = 0; m != N; ++m){
-			difference += abs(g[n*N + m] - dA[n][m]);
-		}
-	} 
-	assert(difference/(N*N)<=1e-6);
-	
-	
-	/* ========================================= */
-	/* COMPUTING THE GRADIENT OF f WITH TAPENADE */
-	/* ========================================= */
-	
-	/* we have to compute
-		fbar df = fbar d tr C
-				= tr ( fbar Id d C )
-	*/
-	
-	start_time = mtime();
-
-	/* since fbar = 1, fbar Id = Id */
+	trace_on(1);
 	for(int n = 0; n!=N; ++n){
 		for(int m = 0; m!=N; ++m){
-			Id[n][m] = (n == m);
+			aA[id(n,m,N)]<<= A[id(n,m,N)];
 		}
 	}
+	trace(aA, aAinv, aR, N);
+	for(int n = 0; n!=N; ++n){
+		for(int m = 0; m!=N; ++m){
+			aAinv[id(n,m,N)]>>= Ainv[id(n,m,N)];
+		}
+	}
+	trace_off();
 	
-	/* now compute Abar */
-	int Ntmp2 = N;
-	inv_b__(A.data, dA.data, Ainv.data, Id.data, R.data, &Ntmp2);
+	cout<<"finished tracing"<<endl;	
+    
 	
 	
-	
-	end_time = mtime();
-	printf("TAPENADE gradient evaluation of f needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<endl;
 
-	runtimes_file.close();
-	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-	system(mycmd);
+	// /* ====================================== */
+	// /* TIMING TAPED GRADIENT COMPUTATION OF f */
+	// /* ====================================== */
+	// double *g;
+	// g = myalloc(N*N);
+	// start_time = mtime();
+	// gradient(1,N*N,A, g);
+	// end_time = mtime();
+	// printf("ADOL-C gradient of f needs %d ms.\n",(end_time-start_time));
+	// runtimes_file<<end_time-start_time<<"\t";
+	// snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	// system(mycmd);
+
+	
+// 	/* ===================================================== */
+// 	/* COMPUTING THE GRADIENT OF f WITH MATRIX AD via LAPACK */
+// 	/* ===================================================== */
+// 	/*              need to compute
+// 	//              d tr(A^-1) = tr( - (A^-1)^2 dA) and therefore
+// 	//              \nabla tr(A^-1) = - ((A^-1)^2)^T
+// 	*/
+// 	start_time = mtime();
+// 	/* compute the inverse by combination of dgetrf and dgetri */
+// 	/* Ainv2 == A here */
+// 	int ipiv[N];	int info;
+// 	clapack_dgetrf(CblasRowMajor, N, N,
+// 				   Ainv2.data, N, ipiv);
+// 	clapack_dgetri(CblasRowMajor, N, Ainv2.data, N, ipiv);
+
+// 	 /* compute Abar = - (A^{-1} A^{-1})^T */
+// 	cblas_dgemm(CblasRowMajor, CblasTrans,
+// 				 CblasTrans, N, N,
+// 				N, -1., Ainv2.data,
+// 				 N, Ainv2.data, N,
+// 				 0., dA.data, N);
+// 	end_time = mtime();
+// 	printf("lapack gradient evaluation of f needs %d ms.\n",(end_time-start_time));
+// 	runtimes_file<<end_time-start_time<<"\t";
+
+// 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+// 	system(mycmd);
+	
+
+// 	/* CHECK THAT TAPED GRADIENT AND LAPACK GRADIENT EVALUATION ARE THE SAME */
+// 	double difference = 0.;
+// 	for(int n = 0; n != N; ++n){
+// 		for(int m = 0; m != N; ++m){
+// 			difference += abs(g[n*N + m] - dA[n][m]);
+// 		}
+// 	} 
+// 	assert(difference/(N*N)<=1e-6);
+	
+	
+// 	/* ========================================= */
+// 	/* COMPUTING THE GRADIENT OF f WITH TAPENADE */
+// 	/* ========================================= */
+	
+// 	/* we have to compute
+// 		fbar df = fbar d tr C
+// 				= tr ( fbar Id d C )
+// 	*/
+	
+// 	start_time = mtime();
+
+// 	/* since fbar = 1, fbar Id = Id */
+// 	for(int n = 0; n!=N; ++n){
+// 		for(int m = 0; m!=N; ++m){
+// 			Id[n][m] = (n == m);
+// 		}
+// 	}
+	
+// 	/* now compute Abar */
+// 	int Ntmp2 = N;
+// 	inv_b__(A.data, dA.data, Ainv.data, Id.data, R.data, &Ntmp2);
+	
+	
+	
+// 	end_time = mtime();
+// 	printf("TAPENADE gradient evaluation of f needs %d ms.\n",(end_time-start_time));
+// 	runtimes_file<<end_time-start_time<<endl;
+
+// 	runtimes_file.close();
+// 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+// 	system(mycmd);
 
 
 

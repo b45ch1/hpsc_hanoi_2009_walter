@@ -1,7 +1,7 @@
 import os
 import sys
 from pylab import *
-from prettyplotting import *
+import numpy
 import re
 
 try:
@@ -19,7 +19,7 @@ for N in Ns:
 
 
 
-dat = load('runtimes.txt')
+dat = numpy.load('runtimes.txt')
 
 
 # Timings of the function evaluations
