@@ -475,11 +475,11 @@ int main(int argc, char* argv[]){
 	cout<<endl<<endl;
 	
 	
-	/* TIMING ATLAS IMPLEMENTATION INVERSE COMPUTATION */
+	/* TIMING LAPACK IMPLEMENTATION INVERSE COMPUTATION */
 	/* =============================================== */
 	/* compute the inverse by combination of dgetrf and dgetri */
-	start_time = mtime();
 	int *ipiv = new int[N];	int info; int LWORK = N*N;
+	start_time = mtime();
 	dgetrf_(&N, &N, Ainv, &N, ipiv, &info);
 	// cout<<"info="<<info<<endl;
 	dgetri_(&N, Ainv, &N, ipiv, WORK, &LWORK, &info);
@@ -563,7 +563,7 @@ int main(int argc, char* argv[]){
 	}
 	
 	
-	/* TIMING MY C-IMPLEMENTATION INVERSE COMPUTATION */
+	/* TIMING MY C++-IMPLEMENTATION INVERSE COMPUTATION */
 	/* ================================================ */
 	int Ntmp = N;
 	start_time = mtime();
@@ -598,6 +598,7 @@ int main(int argc, char* argv[]){
 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
 	system(mycmd);
 	
+	start_time = mtime();
 	trace_on(0);
 	for(int n = 0; n!=N; ++n){
 		for(int m = 0; m!=N; ++m){
@@ -611,7 +612,11 @@ int main(int argc, char* argv[]){
 		}
 	}
 	trace_off();
+	end_time = mtime();
+	printf("normal selfmade function evaluation in C++ of inv needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<end_time-start_time<<"\t";	
 	cout<<"finished tracing"<<endl;
+	
 	
 	/* ================================ */
 	/* TIMING TAPED INVERSE COMPUTATION */
@@ -728,7 +733,7 @@ int main(int argc, char* argv[]){
 	end_time = mtime();
 	printf("UTPM gradient evaluation of f needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<"\t";
-
+	
 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
 	system(mycmd);
 	
