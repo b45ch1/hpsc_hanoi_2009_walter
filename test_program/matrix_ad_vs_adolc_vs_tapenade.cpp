@@ -836,7 +836,10 @@ int main(int argc, char* argv[]){
 	end_time = mtime();
 	printf("TAPENADE gradient evaluation of f using the c code needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<endl;
-
+	
+	runtimes_file.close();
+	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	system(mycmd);
 	
 	// // fortran version
 	// start_time = mtime();
@@ -844,11 +847,7 @@ int main(int argc, char* argv[]){
 	// inv_b_(A, Abar, Ainv, Id, R, &Ntmp2);
 	// end_time = mtime();
 	// printf("TAPENADE gradient evaluation of f using the fortrang code needs %d ms.\n",(end_time-start_time));
-	// runtimes_file<<end_time-start_time<<endl;
-
-	// runtimes_file.close();
-	// snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-	// system(mycmd);
+	// runtimes_file<<end_time-start_time<<endl;	
 
 	return 0;
 }
