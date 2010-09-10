@@ -30,7 +30,9 @@ return (int)(tv.tv_sec*1000 + (tv.tv_usec / 1000));
 
 
 extern "C" void inv_(double *A, double *QT, double *R, int *NA);
-extern "C" void inv_b__(double *A, double *Ab, double *QT, double *QTb, double *R, int *NA);
+extern "C" void inv_b_(double *A, double *Ab, double *QT, double *QTb, double *R, int *NA);
+extern "C" void inv_b(double *a, double *ab, double *qt, double *qtb, double *r, double *rb, int na) ;
+
 
 extern "C" void dgetrf_( int *M, int *N, double * A, int * LDA, int * IPIV,
 	int *INFO );
@@ -392,7 +394,7 @@ int trace(Tdouble *A, Tdouble *Ainv, Tdouble *R, Tdouble *y, int N){
     *y = 0;
     inv(A, Ainv, R, N);
     for(int n = 0; n < N; ++n){
-        (*y) += A[id(n,n,N)];
+        (*y) += Ainv[id(n,n,N)];
     }
 }
 
@@ -438,7 +440,7 @@ int main(int argc, char* argv[]){
 	double *B = new double[N*N];
 	double *R = new double[N*N];
 	double *Id = new double[N*N];
-	double *dA = new double[N*N];
+	double *Abar = new double[N*N];
 	double *WORK = new double[N*N];
 	
 
@@ -477,13 +479,11 @@ int main(int argc, char* argv[]){
 	/* =============================================== */
 	/* compute the inverse by combination of dgetrf and dgetri */
 	start_time = mtime();
-	{
 	int *ipiv = new int[N];	int info; int LWORK = N*N;
 	dgetrf_(&N, &N, Ainv, &N, ipiv, &info);
 	// cout<<"info="<<info<<endl;
 	dgetri_(&N, Ainv, &N, ipiv, WORK, &LWORK, &info);
 	// cout<<"info="<<info<<endl;
-	}
 	end_time = mtime();
 	printf("normal LAPACK function evaluation of inv needs %d ms.\n",(end_time-start_time));
 	runtimes_file<<end_time-start_time<<"\t";
@@ -589,10 +589,6 @@ int main(int argc, char* argv[]){
 		cout<< "Computation correct? "<< (bool) (abs(sum/N - 1) < N*1e-8 ) <<endl;
 	}
 
-	
-	/* TIMING TAPED INVERSE COMPUTATION */
-	/* ================================ */
-	
 	/* taping inv */
 	cout<<"start tracing my implementation of inv with ADOL-C"<<endl;
 	adouble *aA = new adouble[N*N];
@@ -615,9 +611,11 @@ int main(int argc, char* argv[]){
 		}
 	}
 	trace_off();
+	cout<<"finished tracing"<<endl;
 	
-	cout<<"finished tracing"<<endl;	
-	
+	/* ================================ */
+	/* TIMING TAPED INVERSE COMPUTATION */
+	/* ================================ */
 	start_time = mtime();
 	function(0,N*N,N*N,A, Ainv);
 	end_time = mtime();
@@ -659,11 +657,6 @@ int main(int argc, char* argv[]){
 // 	runtimes_file<<end_time-start_time<<"\t";
 
 
-
-
-	////////////////////////////////////////////////////
-	////////// TESTING DERIVATIVE EVALUATION ///////////
-	////////////////////////////////////////////////////
 	cout<<endl<<endl;
 	cout<<"================================================"<<endl;
 	cout<<"           TESTING GRADIENT EVALUATION          "<<endl;
@@ -686,121 +679,177 @@ int main(int argc, char* argv[]){
     
 	/* taping inv */
 	cout<<"start tracing my implementation of trace(inv(.)) with ADOL-C"<<endl;
-
 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
 	system(mycmd);
-	
+	double y;
 	trace_on(1);
 	for(int n = 0; n!=N; ++n){
 		for(int m = 0; m!=N; ++m){
 			aA[id(n,m,N)]<<= A[id(n,m,N)];
 		}
 	}
-	trace(aA, aAinv, aR, N);
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			aAinv[id(n,m,N)]>>= Ainv[id(n,m,N)];
+	adouble ay;
+	trace(aA, aAinv, aR, &ay, N);
+	ay >>= y;
+	trace_off();
+	cout<<"finished tracing"<<endl;
+	
+	/* ====================================== */
+	/* TIMING TAPED GRADIENT COMPUTATION OF f */
+	/* ====================================== */
+	double *g;
+	g = myalloc(N*N);
+	start_time = mtime();
+	gradient(1,N*N,A, g);
+	end_time = mtime();
+	printf("ADOL-C gradient of f needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<end_time-start_time<<"\t";
+	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	system(mycmd);
+	
+	
+	/* ===================================================== */
+	/* COMPUTING THE GRADIENT OF f WITH MATRIX AD            */
+	/* ===================================================== */
+	/*              need to compute
+	//              d tr(A^-1) = tr( - (A^-1)^2 dA) and therefore
+	//              \nabla tr(A^-1) = - ((A^-1)^2)^T
+	*/
+	start_time = mtime();
+	/* Ainv2 == A here */
+	inv(A, Ainv, R, N);
+
+	 /* compute Abar = - (A^{-1} A^{-1})^T */
+	cblas_dgemm(CblasRowMajor, CblasTrans,
+				 CblasTrans, N, N,
+				N, -1., Ainv,
+				 N, Ainv, N,
+				 0., Abar, N);
+	end_time = mtime();
+	printf("UTPM gradient evaluation of f needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<end_time-start_time<<"\t";
+
+	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	system(mycmd);
+	
+	/* check that dot(A,Ainv) = I */
+	cblas_dgemm(CblasRowMajor, CblasNoTrans,
+				 CblasNoTrans, N, N,
+				N, 1., A,
+				 N, Ainv, N,
+				 0., Id, N);
+	{
+		double sum = 0;
+		for (int n = 0; n != N; ++n){
+			for (int m = 0; m != N; ++m){
+				sum += abs( (n==m) - Id[id(n,m,N)]);
+			}
+		}
+		cout<< "Computation correct? "<< (bool) (sum< N*1e-8 ) <<endl;
+	}
+	
+	// cout<<(Ainv[0]*Ainv[0])<<" "<<Abar[0]<<endl;
+
+	/* CHECK THAT TAPED GRADIENT AND LAPACK GRADIENT EVALUATION ARE THE SAME */
+	double difference = 0.;
+	for(int n = 0; n != N; ++n){
+		for(int m = 0; m != N; ++m){
+			difference += abs(g[id(n,m,N)] - Abar[id(n,m,N)]);
+			// cout<< g[id(n,m,N)]<<" "<<Abar[id(n,m,N)]<<endl;
+		}
+	} 
+    cout<< "Computation correct? "<< (bool) (difference< N*1e-6 ) <<endl;
+		// cout<<difference<<endl;
+
+	
+	/* ===================================================== */
+	/* COMPUTING THE GRADIENT OF f WITH MATRIX AD via LAPACK */
+	/* ===================================================== */
+	/*              need to compute
+	//              d tr(A^-1) = tr( - (A^-1)^2 dA) and therefore
+	//              \nabla tr(A^-1) = - ((A^-1)^2)^T
+	*/
+	for(int n = 0; n != N; ++n){
+		for(int m = 0; m != N; ++m){
+		    Ainv[id(n,m,N)] = A[id(n,m,N)];
 		}
 	}
-	trace_off();
 	
-	cout<<"finished tracing"<<endl;	
-    
+	start_time = mtime();
+	/* compute the inverse by combination of dgetrf and dgetri */
+	// int ipiv[N];	int info;
 	
-	
+	dgetrf_(&N, &N, Ainv, &N, ipiv, &info);
+	// cout<<"info="<<info<<endl;
+	dgetri_(&N, Ainv, &N, ipiv, WORK, &LWORK, &info);
+	// clapack_dgetrf(CblasRowMajor, N, N,
+	// 			   Ainv2, N, ipiv);
+	// clapack_dgetri(CblasRowMajor, N, Ainv, N, ipiv);
 
-	// /* ====================================== */
-	// /* TIMING TAPED GRADIENT COMPUTATION OF f */
-	// /* ====================================== */
-	// double *g;
-	// g = myalloc(N*N);
-	// start_time = mtime();
-	// gradient(1,N*N,A, g);
-	// end_time = mtime();
-	// printf("ADOL-C gradient of f needs %d ms.\n",(end_time-start_time));
-	// runtimes_file<<end_time-start_time<<"\t";
-	// snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-	// system(mycmd);
+	 /* compute Abar = - (A^{-1} A^{-1})^T */
+	cblas_dgemm(CblasRowMajor, CblasTrans,
+				 CblasTrans, N, N,
+				N, -1., Ainv,
+				 N, Ainv, N,
+				 0., Abar, N);
+	end_time = mtime();
+	printf("UTPM lapack gradient evaluation of f needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<end_time-start_time<<"\t";
 
-	
-// 	/* ===================================================== */
-// 	/* COMPUTING THE GRADIENT OF f WITH MATRIX AD via LAPACK */
-// 	/* ===================================================== */
-// 	/*              need to compute
-// 	//              d tr(A^-1) = tr( - (A^-1)^2 dA) and therefore
-// 	//              \nabla tr(A^-1) = - ((A^-1)^2)^T
-// 	*/
-// 	start_time = mtime();
-// 	/* compute the inverse by combination of dgetrf and dgetri */
-// 	/* Ainv2 == A here */
-// 	int ipiv[N];	int info;
-// 	clapack_dgetrf(CblasRowMajor, N, N,
-// 				   Ainv2.data, N, ipiv);
-// 	clapack_dgetri(CblasRowMajor, N, Ainv2.data, N, ipiv);
-
-// 	 /* compute Abar = - (A^{-1} A^{-1})^T */
-// 	cblas_dgemm(CblasRowMajor, CblasTrans,
-// 				 CblasTrans, N, N,
-// 				N, -1., Ainv2.data,
-// 				 N, Ainv2.data, N,
-// 				 0., dA.data, N);
-// 	end_time = mtime();
-// 	printf("lapack gradient evaluation of f needs %d ms.\n",(end_time-start_time));
-// 	runtimes_file<<end_time-start_time<<"\t";
-
-// 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-// 	system(mycmd);
+	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	system(mycmd);
 	
 
 // 	/* CHECK THAT TAPED GRADIENT AND LAPACK GRADIENT EVALUATION ARE THE SAME */
 // 	double difference = 0.;
 // 	for(int n = 0; n != N; ++n){
 // 		for(int m = 0; m != N; ++m){
-// 			difference += abs(g[n*N + m] - dA[n][m]);
+// 			difference += abs(g[n*N + m] - Abar[n][m]);
 // 		}
 // 	} 
 // 	assert(difference/(N*N)<=1e-6);
 	
 	
-// 	/* ========================================= */
-// 	/* COMPUTING THE GRADIENT OF f WITH TAPENADE */
-// 	/* ========================================= */
+	/* ============================================= */
+	/* COMPUTING THE GRADIENT OF trace WITH TAPENADE */
+	/* ============================================= */
 	
-// 	/* we have to compute
-// 		fbar df = fbar d tr C
-// 				= tr ( fbar Id d C )
-// 	*/
+	/* we have to compute
+		fbar df = fbar d tr C
+				= tr ( fbar Id d C )
+	*/
 	
-// 	start_time = mtime();
 
-// 	/* since fbar = 1, fbar Id = Id */
-// 	for(int n = 0; n!=N; ++n){
-// 		for(int m = 0; m!=N; ++m){
-// 			Id[n][m] = (n == m);
-// 		}
-// 	}
+	/* since fbar = 1, fbar Id = Id */
+	for(int n = 0; n!=N; ++n){
+		for(int m = 0; m!=N; ++m){
+			Id[id(n,m,N)] = (n == m);
+		}
+	}
 	
-// 	/* now compute Abar */
-// 	int Ntmp2 = N;
-// 	inv_b__(A.data, dA.data, Ainv.data, Id.data, R.data, &Ntmp2);
+	/* now compute Abar */
+	double *Ainvbar = new double[N*N];
+	double *Rbar = new double[N*N];
 	
-	
-	
-// 	end_time = mtime();
-// 	printf("TAPENADE gradient evaluation of f needs %d ms.\n",(end_time-start_time));
-// 	runtimes_file<<end_time-start_time<<endl;
-
-// 	runtimes_file.close();
-// 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
-// 	system(mycmd);
-
-
-
-
-
-
+	start_time = mtime();
+	inv_b(A, Abar, Ainv, Ainvbar, R, Rbar, N);
+	end_time = mtime();
+	printf("TAPENADE gradient evaluation of f using the c code needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<end_time-start_time<<endl;
 
 	
+	// // fortran version
+	// start_time = mtime();
+	// int Ntmp2 = N;
+	// inv_b_(A, Abar, Ainv, Id, R, &Ntmp2);
+	// end_time = mtime();
+	// printf("TAPENADE gradient evaluation of f using the fortrang code needs %d ms.\n",(end_time-start_time));
+	// runtimes_file<<end_time-start_time<<endl;
+
+	// runtimes_file.close();
+	// snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
+	// system(mycmd);
+
 	return 0;
 }
 
