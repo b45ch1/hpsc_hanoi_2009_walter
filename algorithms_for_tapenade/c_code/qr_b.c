@@ -6,7 +6,7 @@
 /*
   Differentiation of qr in reverse (adjoint) mode:
    gradient     of useful results: *r *qt
-   with respect to varying inputs: *r *qt *a
+   with respect to varying inputs: *qt *a
 */
 void qr_b(double *a, double *ab, double *qt, double *qtb, double *r, double *
         rb, int na) {

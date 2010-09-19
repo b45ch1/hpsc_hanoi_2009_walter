@@ -1,15 +1,19 @@
 LIBS		= [
 				'adolc',
-				'atlas',
 				'blas',
-				'lapack',
+				'atlas',
+				'utpm',
 			]
 LIBPATH		= [
 				'/home/b45ch1/workspace/ADOL-C/trunk/ADOL-C/src/.libs',
+				'/home/b45ch1/workspace/taylorpoly/taylorpoly/taylorpoly',
 		  ]
 INCLUDEPATH	= [
 			'../algorithms_for_adolc',
+			'../algorithms_for_tapenade/c_code',
 			'/home/b45ch1/workspace/ADOL-C/trunk/ADOL-C/src',
+			'/home/b45ch1/workspace/taylorpoly/taylorpoly/taylorpoly/src',
+			# '/home/b45ch1/workspace/taylorpoly/taylorpoly/3rdparty/lapack_headers',
 			]
 
 env = Environment(

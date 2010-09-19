@@ -2,3 +2,4 @@
     Tapenade 3.4 (r3375) - 10 Feb 2010 15:08
 */
 #include <math.h>
+#include "dense_inverse.h"

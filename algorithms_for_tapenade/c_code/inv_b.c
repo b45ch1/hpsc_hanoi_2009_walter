@@ -5,9 +5,9 @@
 
 /*
   Differentiation of inv in reverse (adjoint) mode:
-   gradient     of useful results: *r *qt
-   with respect to varying inputs: *r *qt *a
-   RW status of diff variables: *r:in-out *qt:in-out *a:out
+   gradient     of useful results: *qt
+   with respect to varying inputs: *qt *a
+   RW status of diff variables: *qt:in-out *a:out
 */
 void inv_b(double *a, double *ab, double *qt, double *qtb, double *r, double *
         rb, int na) {
@@ -69,6 +69,7 @@ void inv_b(double *a, double *ab, double *qt, double *qtb, double *r, double *
         }
         pushinteger4_(adFrom);
     }
+    *rb = 0.0;
     for (n = 0; n <= na-1; ++n) {
         popinteger4_(&adFrom);
         for (m = na-1; m >= adFrom; --m) {

@@ -1,4 +1,5 @@
 #include "math.h"
+#include "dense_inverse.h"
 
 /** \brief Computes the Q^T R decomposition
 Warning: this algorithm returns Q^T and not Q.
