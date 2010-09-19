@@ -15,6 +15,7 @@ extern "C"{
 #include "cblas.h"
 #include "dense_inverse.h"
 #include "inv_b.h"
+#include "utpm.h"
 
 }
 
@@ -453,7 +454,6 @@ int main(int argc, char* argv[]){
 				= tr ( fbar Id d C )
 	*/
 	
-
 	/* since fbar = 1, fbar Id = Id */
 	for(int n = 0; n!=N; ++n){
 		for(int m = 0; m!=N; ++m){
@@ -481,7 +481,34 @@ int main(int argc, char* argv[]){
 	// inv_b_(A, Abar, Ainv, Id, R, Ntmp2);
 	// end_time = mtime();
 	// printf("TAPENADE gradient evaluation of f using the fortrang code needs %d ms.\n",(end_time-start_time));
-	// runtimes_file<<end_time-start_time<<endl;	
+	// runtimes_file<<end_time-start_time<<endl;
+	
+	
+	/* ============================================= */
+	/* TESTING HIGHER-ORDER DERIVATIVES              */
+	/* ============================================= */
+	int P = 1; int D = 4; 
+	double *utpm_A = new double[N*N + (D-1)*P*(N*N)];
+	double *utpm_B = new double[N*N + (D-1)*P*(N*N)];
+	double *utpm_C = new double[N*N + (D-1)*P*(N*N)];
+	int *utpm_strides = new int[3];
+	utpm_strides[0] = N*N*sizeof(double);
+	utpm_strides[1] = sizeof(double);
+	utpm_strides[2] = N*sizeof(double);
+	int *utpm_shape = new int[2];
+	utpm_shape[0] = N; utpm_shape[1] = N;
+	
+	/* fill utpm_A and utpm_B with random numbers */
+	for(int i = 0; i!=N*N + (D-1)*P*(N*N); ++i){
+		utpm_A[i] = rand()/100000000000.;
+		utpm_B[i] = rand()/100000000000.;
+	}
+	
+	print_utpm(P, D, 2, utpm_shape, &utpm_strides[1], utpm_A);
+	utpm_dot(P, D, N, N, N, 1., utpm_A, utpm_strides, utpm_B, utpm_strides, 0., utpm_C, utpm_strides);
+	
+
+
 
 	return 0;
 }
