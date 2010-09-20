@@ -9,6 +9,7 @@
 
 #include "adolc/adolc.h"
 #include "dense_inverse.hpp"
+#include "dot.hpp"
 
 extern "C"{
 #include "clapack.h"
@@ -469,9 +470,8 @@ int main(int argc, char* argv[]){
 	inv_b(A, Abar, Ainv, Ainvbar, R, Rbar, N);
 	end_time = mtime();
 	printf("TAPENADE gradient evaluation of f using the c code needs %d ms.\n",(end_time-start_time));
-	runtimes_file<<end_time-start_time<<endl;
+	runtimes_file<<end_time-start_time<<"\t";
 	
-	runtimes_file.close();
 	snprintf (mycmd, (size_t)255, "cat /proc/%d/status | grep VmPeak >> mem_consumption.txt", getpid());
 	system(mycmd);
 	
@@ -487,10 +487,10 @@ int main(int argc, char* argv[]){
 	/* ============================================= */
 	/* TESTING HIGHER-ORDER DERIVATIVES              */
 	/* ============================================= */
-	int P = 1; int D = 4; 
-	double *utpm_A = new double[N*N + (D-1)*P*(N*N)];
-	double *utpm_B = new double[N*N + (D-1)*P*(N*N)];
-	double *utpm_C = new double[N*N + (D-1)*P*(N*N)];
+	int P = 1; int D = 5;
+	double *utpm_A = new double[(1+(D-1)*P)*(N*N)];
+	double *utpm_B = new double[(1+(D-1)*P)*(N*N)];
+	double *utpm_C = new double[(1+(D-1)*P)*(N*N)];
 	int *utpm_strides = new int[3];
 	utpm_strides[0] = N*N*sizeof(double);
 	utpm_strides[1] = sizeof(double);
@@ -504,12 +504,48 @@ int main(int argc, char* argv[]){
 		utpm_B[i] = rand()/100000000000.;
 	}
 	
-	print_utpm(P, D, 2, utpm_shape, &utpm_strides[1], utpm_A);
+	// print_utpm(P, D, 2, utpm_shape, &utpm_strides[1], utpm_A);
+	start_time = mtime();
 	utpm_dot(P, D, N, N, N, 1., utpm_A, utpm_strides, utpm_B, utpm_strides, 0., utpm_C, utpm_strides);
+	end_time = mtime();
+	runtimes_file<<end_time-start_time<<"\t";
+	printf("taylorpoly UTPM needs %d ms.\n",(end_time-start_time));	
 	
-
-
-
+	/* trace the operations with ADOL-C */
+	adouble *aA2 = new adouble[(N*N)];
+	adouble *aB2 = new adouble[(N*N)];
+	adouble *aC2 = new adouble[(N*N)];
+	
+	start_time = mtime();
+	trace_on(2);
+	for(int n = 0; n!=N; ++n){
+		for(int m = 0; m!=N; ++m){
+			aA2[id(n,m,N)]<<= utpm_A[id(n,m,N)];
+			aB2[id(n,m,N)]<<= utpm_B[id(n,m,N)];
+		}
+	}
+	dot(aA2, aB2, aC2, N);
+	for(int n = 0; n!=N; ++n){
+		for(int m = 0; m!=N; ++m){
+			aC2[id(n,m,N)]>>= utpm_C[id(n,m,N)];
+		}
+	}
+	trace_off();
+	end_time = mtime();
+	
+	double *x2 = new double[2*N*N];
+	double *y2 = new double[N*N];
+	double ***V2 = myalloc3(2*N*N,P, D-1);
+	double ***W2 = myalloc3(N*N,P, D-1);
+	
+	// start_time = mtime();
+	start_time = mtime();
+	hov_forward(2,N*N,2*N*N,D-1, P, x2, V2, y2, W2);
+	end_time = mtime();
+	runtimes_file<<end_time-start_time<<"\t";
+	printf("ADOL-C hov_forward needs %d ms.\n",(end_time-start_time));
+	runtimes_file<<endl;
+	runtimes_file.close();
 	return 0;
 }
 

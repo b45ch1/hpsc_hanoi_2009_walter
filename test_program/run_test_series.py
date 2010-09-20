@@ -4,6 +4,8 @@ from pylab import *
 import prettyplotting
 import numpy
 import re
+import time
+
 
 try:
 	os.remove("runtimes.txt")
@@ -13,10 +15,11 @@ except:
 	pass
 
 
-Ns = range(60,130,10)
+Ns = range(50,130,10)
 
 for N in Ns:
-	os.system("./matrix_ad_vs_adolc_vs_tapenade.exe %d" % N)
+    time.sleep(2)
+    os.system("./matrix_ad_vs_adolc_vs_tapenade.exe %d" % N)
 
 dat = numpy.loadtxt('runtimes.txt')
 
@@ -47,8 +50,6 @@ gradient_utpm_my_c_implementation = semilogy(dat[:,0], dat[:,8], '-.k.')
 gradient_utpm_lapack = semilogy(dat[:,0], dat[:,9], '--k.')
 gradient_utps_tapenade  = semilogy(dat[:,0], dat[:,10], '--kv')
 
-
-
 xlabel('matrix size $N$')
 ylabel('runtime $t$ [ms]')
 
@@ -57,6 +58,20 @@ legend((gradient_utps_adolc, gradient_utps_tapenade, gradient_utpm_my_c_implemen
 grid()
 savefig('gradient_matrix_ad_vs.eps')
 savefig('gradient_matrix_ad_vs.png')
+
+# Timing UTP arithmetic
+figure()
+utpm_taylorpoly = semilogy(dat[:,0], dat[:,-2], '-.k.')
+utps_adolc = semilogy(dat[:,0], dat[:,-1], '-kv')
+xlabel('matrix size $N$')
+ylabel('runtime $t$ [ms]')
+
+title(r'UTP Arithmetic')
+legend((utpm_taylorpoly, utps_adolc), ('UTPM (TAYLORPOLY)', 'UTPS (ADOL-C)'),loc = 2)
+grid()
+savefig('utps_vs_utpm.eps')
+savefig('utps_vs_utpm.png')
+
 
 # #########################################
 # #      MEMORY CONSUMPTION               #
