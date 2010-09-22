@@ -29,7 +29,6 @@ return (int)(tv.tv_sec*1000 + (tv.tv_usec / 1000));
 }
 
 using namespace std;
-
 /** computes y = trace(A) */
 template <class Tdouble>
 int trace(Tdouble *A, Tdouble *Ainv, Tdouble *R, Tdouble *y, int N){
@@ -39,6 +38,8 @@ int trace(Tdouble *A, Tdouble *Ainv, Tdouble *R, Tdouble *y, int N){
         (*y) += Ainv[id(n,n,N)];
     }
 }
+
+
 
 int main(int argc, char* argv[]){
 	int N = 100;

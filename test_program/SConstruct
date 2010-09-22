@@ -44,3 +44,16 @@ env.Program(target='matrix_ad_vs_adolc_vs_tapenade.exe',
 	
 	])
 
+env.SharedLibrary(target='libtest_cases',
+	source=['test_cases.cpp',
+	'../algorithms_for_tapenade/fortran_code/dense_qr_decomposition_by_givens_rotations.f',
+	'../algorithms_for_tapenade/fortran_code/dense_inverse.f',
+	'../algorithms_for_tapenade/fortran_code/adStack.c',
+	'../algorithms_for_tapenade/fortran_code/adBuffer.c',
+	'../algorithms_for_tapenade/c_code/inv_b.c',
+	'../algorithms_for_tapenade/c_code/qr_b.c',
+	'../algorithms_for_tapenade/c_code/dense_inverse.c',
+	'../algorithms_for_tapenade/c_code/GlobalDeclarations_b.c',
+	])
+
+
