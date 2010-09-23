@@ -18,6 +18,7 @@ report
 *.jpg
 *.png
 *.o
+*.os
 *.so
 *.eps
 *~

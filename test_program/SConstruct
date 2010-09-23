@@ -3,6 +3,7 @@ LIBS		= [
 				'blas',
 				'atlas',
 				'utpm',
+				'utps',
 			]
 LIBPATH		= [
 				'/home/b45ch1/workspace/ADOL-C/trunk/ADOL-C/src/.libs',
