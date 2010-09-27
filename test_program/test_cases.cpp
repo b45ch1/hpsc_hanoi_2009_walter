@@ -17,12 +17,14 @@ extern "C"{
 }
 
 #include <sys/time.h>
+
 struct timeval tv;
 int mtime(void)
 {
 gettimeofday(&tv,NULL);
 return (int)(tv.tv_sec*1000 + (tv.tv_usec / 1000));
 }
+
 
 using namespace std;
 /** computes y = trace(A) */
@@ -38,51 +40,125 @@ int trace(Tdouble *A, Tdouble *Ainv, Tdouble *R, Tdouble *y, int N){
 extern "C"
 int function_inv_c(int N, double *runtimes){
     /*
-	TIMING MY C-IMPLEMENTATION INVERSE COMPUTATION 
-	*/
-	int info;
-	double start_time, end_time;
-	
-	double *A = new double[N*N];
-	double *Ainv = new double[N*N];
-	double *R = new double[N*N];
-	double *Id = new double[N*N];
-	
-	/* fill A with random numbers */
-	for(int n = 0; n!=N; ++n){
-		for(int m = 0; m!=N; ++m){
-			A[id(n,m,N)] = rand()/100000000000.;
-		}
-	}
-	
-	start_time = mtime();
-	inv(A, Ainv, R, N);
-	end_time = mtime();
-	runtimes[0] = end_time-start_time;
-	
-	/* check that dot(A,Ainv) = I */
-	cblas_dgemm(CblasRowMajor, CblasNoTrans,
-				 CblasNoTrans, N, N,
-				N, 1., A,
-				 N, Ainv, N,
-				 0., Id, N);
-	{
-		double sum = 0;
-		for (int n = 0; n != N; ++n){
-			for (int m = 0; m != N; ++m){
-				sum += Id[id(n,m,N)];
-			}
-		}
-		info = (bool) (abs(sum/N - 1) < N*1e-8 );
-	}
-	
-	delete[] A;
-	delete[] Ainv;
-	delete[] R;
-	delete[] Id;
-	
-	return 0;
+    TIMING MY C-IMPLEMENTATION INVERSE COMPUTATION 
+    */
+    int info;
+    double start_time, end_time;
+    
+    double *A = new double[N*N];
+    double *Ainv = new double[N*N];
+    double *R = new double[N*N];
+    double *Id = new double[N*N];
+    
+    /* fill A with random numbers */
+    for(int n = 0; n!=N; ++n){
+        for(int m = 0; m!=N; ++m){
+            A[id(n,m,N)] = rand()/100000000000.;
+        }
+    }
+    
+    start_time = mtime();
+    inv(A, Ainv, R, N);
+    end_time = mtime();
+    runtimes[0] = end_time-start_time;
+    
+    /* check that dot(A,Ainv) = I */
+    cblas_dgemm(CblasRowMajor, CblasNoTrans,
+                 CblasNoTrans, N, N,
+                N, 1., A,
+                 N, Ainv, N,
+                 0., Id, N);
+    {
+        double sum = 0;
+        for (int n = 0; n != N; ++n){
+            for (int m = 0; m != N; ++m){
+                sum += Id[id(n,m,N)];
+            }
+        }
+        info = (bool) (abs(sum/N - 1) < N*1e-8 );
+    }
+    
+    delete[] A;
+    delete[] Ainv;
+    delete[] R;
+    delete[] Id;
+    
+    return 0;
 }
+
+
+
+
+extern "C"
+int function_inv_atlas(int N, double *runtimes){
+    /*
+    TIMING MY C-IMPLEMENTATION INVERSE COMPUTATION 
+    */
+    int info;
+    double start_time, end_time;
+    
+    double *A = new double[N*N];
+    double *Ainv = new double[N*N];
+    double *R = new double[N*N];
+    double *Id = new double[N*N];
+    int *ipiv = new int[N];
+    
+    /* fill A with random numbers */
+    for(int n = 0; n!=N; ++n){
+        for(int m = 0; m!=N; ++m){
+            A[id(n,m,N)] = rand()/100000000000.;
+        }
+    }
+    
+    start_time = mtime();
+    clapack_dgetrf(CblasRowMajor, N, N, A, N, ipiv);
+    clapack_dgetri(CblasRowMajor, N, A, N, ipiv);
+    end_time = mtime();
+    runtimes[0] = end_time-start_time;
+    
+    delete[] A;
+    delete[] Ainv;
+    delete[] R;
+    delete[] Id;
+    delete[] ipiv;
+    
+    return 0;
+}
+
+
+
+extern "C"
+int function_inv_cpp(int N, double *runtimes){
+    /*
+    TIMING TAPING OF THE C++-IMPLEMENTATION INVERSE COMPUTATION 
+    */
+    int info;
+    double start_time, end_time;
+    double *A = new double[N*N];
+    double *Ainv = new double[N*N];
+    double *R = new double[N*N];
+    double *Id = new double[N*N];
+    
+    /* fill A with random numbers */
+    for(int n = 0; n!=N; ++n){
+        for(int m = 0; m!=N; ++m){
+            A[id(n,m,N)] = rand()/100000000000.;
+        }
+    }
+    start_time = mtime();
+    inv(A, Ainv, R, N);
+    end_time = mtime();
+    runtimes[0] = end_time-start_time;
+    
+    delete[] A;
+    delete[] Ainv;
+    delete[] R;
+    delete[] Id;
+    
+    return 0;
+}
+
+
 
 
 
@@ -172,6 +248,7 @@ int gradient_trace_adolc(int N, double *runtimes){
 	double *Ainv = new double[N*N];
 	double *R = new double[N*N];
 	double *Id = new double[N*N];
+	double *g = new double[N*N];
 	adouble *aA = new adouble[N*N];
 	adouble *aR = new adouble[N*N];
 	adouble *aAinv = new adouble[N*N];
@@ -198,8 +275,7 @@ int gradient_trace_adolc(int N, double *runtimes){
 	end_time = mtime();
 	runtimes[0] = end_time-start_time;
 
-	double *g;
-	g = myalloc(N*N);
+
 	start_time = mtime();
 	gradient(0,N*N,A, g);
 	end_time = mtime();
@@ -263,6 +339,97 @@ int gradient_trace_c(int N, double *runtimes){
     return -1;
 }
 
+extern "C"
+int gradient_trace_atlas(int N, double *runtimes){
+    /*
+    compute gradient of trace(inv(A)) using ATLAS routines
+    this is equivalent to Univariate Taylor Polynomial Arithmetic of Matrices
+      
+    need to compute
+    d tr(A^-1) = tr( - (A^-1)^2 dA) and therefore
+    \nabla tr(A^-1) = - ((A^-1)^2)^T
+    */
+    
+    double start_time, end_time;
+    double *A = new double[N*N];
+    double *Ainv = new double[N*N];
+    double *R = new double[N*N];
+    double *Abar = new double[N*N];
+    int *ipiv = new int[N];
+    
+    /* fill A with random numbers */
+    for(int n = 0; n!=N; ++n){
+        for(int m = 0; m!=N; ++m){
+            A[id(n,m,N)] = rand()/100000000000.;
+        }
+    }
+    start_time = mtime();
+    /* compute the inverse by combination of dgetrf and dgetri */
+    clapack_dgetrf(CblasRowMajor, N, N, A, N, ipiv);
+    clapack_dgetri(CblasRowMajor, N, A, N, ipiv);
+    
+     /* compute Abar = - (A^{-1} A^{-1})^T */
+    cblas_dgemm(CblasRowMajor, CblasTrans,
+                 CblasTrans, N, N,
+                N, -1., A,
+                 N, A, N,
+                 0., Abar, N);
+    end_time = mtime();
+    runtimes[0] = end_time-start_time;
+    
+    delete[] A;
+    delete[] Ainv;
+    delete[] R;
+    delete[] Abar;
+    delete[] ipiv;
+    
+    return -1;
+}
+
+extern "C"
+int gradient_trace_tapenade(int N, double *runtimes){
+    /*
+    compute gradient of trace(inv(A)) with a C implementation
+    using Tapenade
+    this is equivalent to Univariate Taylor Polynomial Arithmetic of Scalars
+      
+    
+    we have to compute
+    fbar df = fbar d tr C
+            = tr ( fbar Id d C )
+    */
+    
+    double start_time, end_time;
+    double *A = new double[N*N];
+    double *Ainv = new double[N*N];
+    double *R = new double[N*N];
+    double *Abar = new double[N*N];
+    double *Ainvbar = new double[N*N];
+    double *Rbar = new double[N*N];
+        
+    
+    /* fill A with random numbers */
+    for(int n = 0; n!=N; ++n){
+        for(int m = 0; m!=N; ++m){
+            A[id(n,m,N)] = rand()/100000000000.;
+        }
+    }
+    /* now compute Abar */
+    start_time = mtime();
+    inv_b(A, Abar, Ainv, Ainvbar, R, Rbar, N);
+    end_time = mtime();
+    runtimes[0] = end_time - start_time;
+    
+    delete[] A;
+    delete[] Ainv;
+    delete[] R;
+    delete[] Abar;
+    delete[] Ainvbar;
+    delete[] Rbar;
+    
+    return -1;
+}
+
 
 extern "C"
 int utp_dot_adolc(int P, int D, int N, double *runtimes){
@@ -275,6 +442,15 @@ int utp_dot_adolc(int P, int D, int N, double *runtimes){
     double *y = new double[N*N];
     double ***V = myalloc3(2*N*N,P, D-1);
     double ***W = myalloc3(N*N,P, D-1);
+    
+    for(int n = 0; n != 2*N*N; ++n){
+        x[n] = rand()/100000000000.;
+        for(int p = 0; p != P; ++p){
+            for(int d = 0; d != D-1; ++d){
+                V[n][p][d] = rand()/100000000000.;
+            }
+        }
+    }
 
     start_time = mtime();
     trace_on(2);
@@ -329,22 +505,33 @@ int utp_dot_taylorpoly(int P, int D, int N, double *runtimes){
         utpm_B[i] = rand()/100000000000.;
     }
     
-    // print_utpm(P, D, 2, utpm_shape, &utpm_strides[1], utpm_A);
     start_time = mtime();
     utpm_dot(P, D, N, N, N, 1., utpm_A, utpm_strides, utpm_B, utpm_strides, 0., utpm_C, utpm_strides);
     end_time = mtime();
     runtimes[0] = end_time-start_time;
+    
+    delete[] utpm_A;
+    delete[] utpm_B;
+    delete[] utpm_C;
+    delete[] utpm_strides;
+    delete[] utpm_shape;
     
     return -1;
 }
 
 extern "C"
 int utps_dot_taylorpoly(int P, int D, int N, double *runtimes){
-    int stride = (1+P*(D-1));
+    const int stride = (1+P*(D-1));
     double start_time, end_time;
     double *x = new double[(1+(D-1)*P)*(N*N)];
     double *y = new double[(1+(D-1)*P)*(N*N)];
     double *z = new double[(1+(D-1)*P)*(N*N)];
+    
+    /* fill utpm_A and utpm_B with random numbers */
+    for(int i = 0; i!=N*N + (D-1)*P*(N*N); ++i){
+        x[i] = rand()/100000000000.;
+        y[i] = rand()/100000000000.;
+    }
 
     start_time = mtime();
     for(int n = 0; n != N; ++n){ // iterate over all columns
@@ -356,6 +543,11 @@ int utps_dot_taylorpoly(int P, int D, int N, double *runtimes){
     }
     end_time = mtime();
     runtimes[0] = end_time-start_time;
+    
+    delete[] x;
+    delete[] y;
+    delete[] z;
+    
     return -1;
     
 }
